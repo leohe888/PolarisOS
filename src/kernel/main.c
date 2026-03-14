@@ -1,14 +1,11 @@
 #include <os/os.h>
-
-int magic = OS_MAGIC;
-char message[] = "Hello, PolarisOS!";
-char buf[1024];
+#include <os/console.h>
+#include <os/assert.h>
 
 void kernel_init()
 {
-    char *video = (char *)0xb8000;
-    for (int i = 0; i < sizeof(message); i++)
-    {
-        video[i * 2] = message[i];
-    }
+    console_init();
+    // assert(3 < 5);
+    assert(3 > 5);
+    panic("Out of Memory");
 }

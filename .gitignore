@@ -1,4 +1,6 @@
 *.bin
 *.img
 *.ini
+*.map
+*.vmdk
 build

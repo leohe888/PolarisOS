@@ -29,24 +29,29 @@ DEBUG 	:= -g
 
 INCLUDE := -I$(SRC)/include
 
-# 将 boot 目录下的汇编文件编译为纯二进制文件
 $(BUILD)/boot/%.bin: $(SRC)/boot/%.asm
 	mkdir -p $(dir $@)
 	nasm -f bin $< -o $@
 
-# 将 kernel 目录下的汇编文件编译为 ELF 格式的目标文件
-$(BUILD)/kernel/%.o: $(SRC)/kernel/%.asm
+$(BUILD)/%.o: $(SRC)/%.asm
 	mkdir -p $(dir $@)
 	nasm -f elf32 $(DEBUG) $< -o $@
 
-# 将 kernel 目录下的 C 文件编译为 ELF 格式的目标文件
-$(BUILD)/kernel/%.o: $(SRC)/kernel/%.c
+$(BUILD)/%.o: $(SRC)/%.c
 	mkdir -p $(dir $@)
 	gcc $(CFLAGS) $(DEBUG) $(INCLUDE) -c $< -o $@
 
-# 链接生成内核可执行文件 kernel.bin
-$(BUILD)/kernel.bin: $(BUILD)/kernel/start.o \
-                      $(BUILD)/kernel/main.o
+# 链接生成 ELF 格式的内核可执行文件 kernel.bin
+$(BUILD)/kernel.bin: \
+	$(BUILD)/kernel/start.o \
+	$(BUILD)/kernel/main.o \
+	$(BUILD)/kernel/io.o \
+	$(BUILD)/kernel/console.o \
+	$(BUILD)/kernel/printk.o \
+	$(BUILD)/kernel/assert.o \
+	$(BUILD)/lib/string.o \
+	$(BUILD)/lib/vsprintf.o
+
 	mkdir -p $(dir $@)
 	ld -m elf_i386 -static $^ -o $@ -Ttext $(ENTRY_POINT)
 
@@ -59,21 +64,45 @@ $(BUILD)/system.map: $(BUILD)/kernel.bin
 	nm $^ | sort > $@
 
 # 创建硬盘镜像文件 master.img
-$(BUILD)/master.img: $(BUILD)/boot/mbr.bin \
-                      $(BUILD)/boot/loader.bin \
-                      $(BUILD)/system.bin \
-                      $(BUILD)/system.map
+$(BUILD)/master.img: \
+	$(BUILD)/boot/mbr.bin \
+	$(BUILD)/boot/loader.bin \
+	$(BUILD)/system.bin \
+	$(BUILD)/system.map
+
 	yes | bximage -q -hd=16 -func=create -sectsize=512 -imgmode=flat $@
 	dd if=$(BUILD)/boot/mbr.bin of=$@ bs=512 count=1 conv=notrunc
 	dd if=$(BUILD)/boot/loader.bin of=$@ bs=512 count=4 seek=2 conv=notrunc
 	dd if=$(BUILD)/system.bin of=$@ bs=512 count=200 seek=10 conv=notrunc
 
+.PHONY: test
 test: $(BUILD)/master.img
 
-.PHONY: clean bochs usb
-
+.PHONY: clean
 clean:
 	rm -rf $(BUILD)
 
+.PHONY: bochs
 bochs: $(BUILD)/master.img
-	bochs -q
+	bochs -q -f ../bochs/bochsrc
+
+.PHONY: qemu
+qemu: $(BUILD)/master.img
+	qemu-system-i386 \
+	-m 32M \
+	-boot c \
+	-hda $<
+
+.PHONY: qemug
+qemug: $(BUILD)/master.img
+	qemu-system-i386 \
+	-s -S \
+	-m 32M \
+	-boot c \
+	-hda $<
+
+$(BUILD)/master.vmdk: $(BUILD)/master.img
+	qemu-img convert -O vmdk $< $@
+
+.PHONY: vmdk
+vmdk: $(BUILD)/master.vmdk
