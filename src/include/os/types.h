@@ -1,10 +1,10 @@
 #ifndef OS_TYPES_H
 #define OS_TYPES_H
 
-#define EOF -1              // End of file
-#define EOS '\0'            // End of string
+#define EOF -1                          // End of file
+#define EOS '\0'                        // End of string
 
-#define NULL ((void *)0)    // 空指针
+#define NULL ((void *)0)                // 空指针
 
 #define bool _Bool
 #define true 1

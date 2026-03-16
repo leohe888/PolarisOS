@@ -84,17 +84,17 @@ print_string:
 
 ; 加载信息
 load_msg:
-    db "Loading PolarisOS...", 13, 10, 0
+    db "loading PolarisOS...", 13, 10, 0
                             ; \r\n\0
 
 ; 错误信息
 error_msg:
-    db "Loading Error!!!", 13, 10, 0
+    db "loading error!!!", 13, 10, 0
                             ; \r\n\0
 
 ; 检测信息
 detect_msg:
-    db "Detecting Memory Success...", 10, 13, 0
+    db "detecting memory success...", 10, 13, 0
                             ; \r\n\0
 
 [bits 32]                   ; 告诉汇编器接下来生成 32 位代码
@@ -206,12 +206,8 @@ read_disk:
     loop .readw
     ret
 
-; 段选择子：
-; 位 0 ~ 1：RPL —— Request Privilege Level，请求特权级
-; 位 2：TI —— Table Indicator，表指示符，0 表示 GDT，1 表示 LDT
-; 位 3 ~ 15：GDT 索引
-CODE_SELECTOR equ (1 << 3)      ; 代码段选择子
-DATA_SELECTOR equ (2 << 3)      ; 数据段选择子
+CODE_SELECTOR equ (1 << 3)      ; 代码段、GDT、RPL 0
+DATA_SELECTOR equ (2 << 3)      ; 数据段、GDT、RPL 0
 
 MEMORY_BASE equ 0               ; 内存基地址
 MEMORY_LIMIT equ (4 * 1024 * 1024 * 1024) / (4 * 1024) - 1
@@ -230,14 +226,14 @@ gdt_code:
     dw MEMORY_BASE & 0xffff                         ; 段基地址第 0 ~ 15 位
     db (MEMORY_BASE >> 16) & 0xff                   ; 段基地址第 16 ~ 23 位
     db 0b_1_00_1_1_0_1_0                            ; 存在、DPL 0、应用段、代码段、非一致代码段、可读、未被 CPU 访问
-    db 0b_1_1_0_0_0000 | (MEMORY_LIMIT >> 16) & 0xf ; 粒度 4KB、32 位、不是 64 位、段界限第 16 ~ 19 位
+    db 0b_1_1_0_0_0000 | (MEMORY_LIMIT >> 16) & 0xf ; 粒度 4KB、32 位、不是 64 位、操作系统保留位、段界限第 16 ~ 19 位
     db (MEMORY_BASE >> 24) & 0xff                   ; 段基地址第 24 ~ 31 位
 gdt_data:
     dw MEMORY_LIMIT & 0xffff                        ; 段界限第 0 ~ 15 位
     dw MEMORY_BASE & 0xffff                         ; 段基地址第 0 ~ 15 位
     db (MEMORY_BASE >> 16) & 0xff                   ; 段基地址第 16 ~ 23 位
     db 0b_1_00_1_0_0_1_0                            ; 存在、DPL 0、应用段、数据段、向上扩展、可读写、未被 CPU 访问
-    db 0b_1_1_0_0_0000 | (MEMORY_LIMIT >> 16) & 0xf ; 粒度 4KB、32 位、不是 64 位、段界限第 16 ~ 19 位
+    db 0b_1_1_0_0_0000 | (MEMORY_LIMIT >> 16) & 0xf ; 粒度 4KB、32 位、不是 64 位、操作系统保留位、段界限第 16 ~ 19 位
     db (MEMORY_BASE >> 24) & 0xff                   ; 段基地址第 24 ~ 31 位
 gdt_end:
 

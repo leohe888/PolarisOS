@@ -17,7 +17,7 @@ SRC 		:= .
 ENTRY_POINT := 0x10000
 
 CFLAGS		:= -m32					# 生成 32 位代码
-CFLAGS		+= -fno-builtin			# 不使用 gcc 内置函数
+CFLAGS		+= -fno-builtin			# 不使用 GCC 内置函数
 CFLAGS		+= -nostdinc			# 不使用标准头文件
 CFLAGS		+= -nostdlib			# 不使用标准库
 CFLAGS		+= -fno-pic				# 不生成位置无关代码
@@ -49,8 +49,15 @@ $(BUILD)/kernel.bin: \
 	$(BUILD)/kernel/console.o \
 	$(BUILD)/kernel/printk.o \
 	$(BUILD)/kernel/assert.o \
+	$(BUILD)/kernel/debug.o \
+	$(BUILD)/kernel/global.o \
+	$(BUILD)/kernel/task.o \
+	$(BUILD)/kernel/schedule.o \
+	$(BUILD)/kernel/interrupt.o \
+	$(BUILD)/kernel/handler.o \
 	$(BUILD)/lib/string.o \
-	$(BUILD)/lib/vsprintf.o
+	$(BUILD)/lib/vsprintf.o \
+	$(BUILD)/lib/stdlib.o \
 
 	mkdir -p $(dir $@)
 	ld -m elf_i386 -static $^ -o $@ -Ttext $(ENTRY_POINT)

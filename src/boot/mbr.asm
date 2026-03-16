@@ -140,12 +140,12 @@ read_disk:
 
 ; 引导信息
 boot_msg:
-    db "Booting PolarisOS...", 13, 10, 0
+    db "booting PolarisOS...", 13, 10, 0
                             ; \r\n\0
 
 ; 错误信息
 error_msg:
-    db "Booting Error!!!", 13, 10, 0
+    db "booting error!!!", 13, 10, 0
                             ; \r\n\0
 
 ; 填充剩余空间
