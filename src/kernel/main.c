@@ -1,15 +1,17 @@
-#include <os/os.h>
-#include <os/console.h>
-#include <os/global.h>
-#include <os/task.h>
-#include <os/interrupt.h>
-#include <os/debug.h>
-#include <os/stdlib.h>
+void console_init();
+void gdt_init();
+void interrupt_init();
+void clock_init();
+void hang();
 
 void kernel_init()
 {
     console_init();
     gdt_init();
     interrupt_init();
-    task_init();
+    // task_init();
+    clock_init();
+
+    asm volatile("sti");
+    hang();
 }
