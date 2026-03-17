@@ -178,6 +178,8 @@ static void command_del(void)
     *(u32 *)cursor = erase;
 }
 
+void start_beep(void);
+
 // 向控制台写入数据
 void console_write(const char *buf, u32 count)
 {
@@ -193,7 +195,7 @@ void console_write(const char *buf, u32 count)
         case ASCII_ENQ:
             break;
         case ASCII_BEL:
-            // TODO
+            start_beep();
             break;
         case ASCII_BS:
             command_bs();
