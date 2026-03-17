@@ -7,7 +7,5 @@ _start:
     ; 初始化内核
     call kernel_init
 
-    ; int 0x80
-
     ; 无限循环
     jmp $

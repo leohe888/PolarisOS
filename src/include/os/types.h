@@ -24,4 +24,6 @@ typedef unsigned short u16;             // 16 位无符号整数
 typedef unsigned int u32;               // 32 位无符号整数
 typedef unsigned long long u64;         // 64 位无符号整数
 
+typedef u32 time_t;
+
 #endif
