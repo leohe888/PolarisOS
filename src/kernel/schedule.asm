@@ -3,6 +3,10 @@
 ; 调用方保存：eax、ecx、edx
 ; 实现方保存：ebx、esi、edi、ebp、esp
 
+[bits 32]
+
+section .text
+
 global task_switch:
 task_switch:
     push ebp

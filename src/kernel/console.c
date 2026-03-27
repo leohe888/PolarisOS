@@ -1,6 +1,7 @@
 #include <os/console.h>
 #include <os/io.h>
 #include <os/string.h>
+#include <os/interrupt.h>
 
 #define CRT_ADDR_REG 0x3D4              // CRT 控制器索引寄存器
 #define CRT_DATA_REG 0x3D5              // CRT 控制器数据寄存器
@@ -181,10 +182,13 @@ static void command_del(void)
 void start_beep(void);
 
 // 向控制台写入数据
-void console_write(const char *buf, u32 count)
+i32 console_write(const char *buf, u32 count)
 {
+    bool intr = interrupt_disable();
+
     char ch;
-    while (count--)
+    i32 nr = 0;
+    while (nr ++ < count)
     {
         ch = *buf++;
 
@@ -234,6 +238,10 @@ void console_write(const char *buf, u32 count)
         }
     }
     set_cursor();
+
+    set_interrupt_state(intr);
+
+    return nr;
 }
 
 void console_init(void)

@@ -2,6 +2,8 @@
 #include <os/interrupt.h>
 #include <os/assert.h>
 #include <os/debug.h>
+#include <os/task.h>
+#include <os/os.h>
 
 #define PIT_CHAN0_REG 0X40
 #define PIT_CHAN2_REG 0X42
@@ -40,20 +42,36 @@ void stop_beep(void)
     }
 }
 
+void task_wakeup(void);
+
 void clock_handler(int vector)
 {
     assert(vector == 0x20);
-    send_eoi(vector);
+    send_eoi(vector);   // 发送中断处理结束
 
-    // if (jiffies % 200 == 0)
-    // {
-    //     start_beep();
-    // }
+    stop_beep();        // 检测并停止蜂鸣器
+    task_wakeup();      // 唤醒睡眠结束的任务
 
     jiffies++;
-    DEBUGK("clock jiffies %d ...\n", jiffies);
+    // DEBUGK("clock jiffies %d ...\n", jiffies);
 
-    stop_beep();
+    task_t *task = running_task();
+    assert(task->magic == OS_MAGIC);
+
+    task->jiffies = jiffies;
+    task->ticks--;
+    if (!task->ticks)
+    {
+        schedule();
+    }
+    
+}
+
+extern u32 startup_time;
+
+time_t sys_time()
+{
+    return startup_time + (jiffies * JIFFY) / 1000;
 }
 
 void pit_init()

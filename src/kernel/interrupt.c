@@ -22,6 +22,8 @@ pointer_t idt_ptr;
 
 handler_t handler_table[IDT_SIZE];
 extern handler_t handler_entry_table[ENTRY_SIZE];
+void syscall_handler();
+void page_fault();
 
 static char *messages[] = {
     "#DE Divide Error\0",
@@ -91,12 +93,42 @@ void set_interrupt_mask(u32 irq, bool enable)
     }
 }
 
-u32 counter = 0;
+// 清除 IF 位，返回设置之前的值
+bool interrupt_disable()
+{
+    asm volatile(
+        "pushfl\n"        // 将当前 eflags 压入栈中
+        "cli\n"           // 清除 IF 位，此时外中断已被屏蔽
+        "popl %eax\n"     // 将刚才压入的 eflags 弹出到 eax
+        "shrl $9, %eax\n" // 将 eax 右移 9 位，得到 IF 位
+        "andl $1, %eax\n" // 只需要 IF 位
+    );
+}
+
+// 获得 IF 位
+bool get_interrupt_state()
+{
+    asm volatile(
+        "pushfl\n"        // 将当前 eflags 压入栈中
+        "popl %eax\n"     // 将压入的 eflags 弹出到 eax
+        "shrl $9, %eax\n" // 将 eax 右移 9 位，得到 IF 位
+        "andl $1, %eax\n" // 只需要 IF 位
+    );
+}
+
+// 设置 IF 位
+void set_interrupt_state(bool state)
+{
+    if (state)
+        asm volatile("sti\n");
+    else
+        asm volatile("cli\n");
+}
 
 void default_handler(int vector)
 {
     send_eoi(vector);
-    DEBUGK("[%x] default interrupt called %d...\n", vector, counter);
+    DEBUGK("[%x] default interrupt called...\n", vector);
 }
 
 void exception_handler(
@@ -171,10 +203,23 @@ void idt_init(void)
         handler_table[i] = exception_handler;
     }
 
+    handler_table[0xe] = page_fault;
+
     for (size_t i = 0x20; i < ENTRY_SIZE; i++)
     {
         handler_table[i] = default_handler;
     }
+
+    // 初始化系统调用
+    gate_t *gate = &idt[0x80];
+    gate->offset0 = (u32)syscall_handler & 0xffff;              // 系统调用处理函数偏移地址第 0 ~ 15 位
+    gate->offset1 = ((u32)syscall_handler >> 16) & 0xffff;      // 系统调用处理函数偏移地址第 16 ~ 31 位
+    gate->selector = 1 << 3;                                    // 代码段
+    gate->reserved = 0;                                         // 保留不用
+    gate->type = 0b1110;                                        // 中断门
+    gate->segment = 0;                                          // 系统段
+    gate->DPL = 3;                                              // 用户态
+    gate->present = 1;                                          // 有效
 
     idt_ptr.base = (u32)idt;
     idt_ptr.limit = sizeof(idt) - 1;

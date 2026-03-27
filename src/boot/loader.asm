@@ -18,16 +18,16 @@ detect_memory:
     mov edx, 0x534d4150     ; 'SMAP' 的 ASCII 码
 
 .next:
-    mov ecx, 20         ; ARDS 缓冲区大小
+    mov ecx, 20             ; ARDS 缓冲区大小
 
-    mov eax, 0xe820     ; 获取物理内存映射
-    int 0x15            ; 调用 BIOS 杂项系统服务中断
+    mov eax, 0xe820         ; 获取物理内存映射
+    int 0x15                ; 调用 BIOS 杂项系统服务中断
 
-    jc .error            ; 调用失败会设置 CF 标志
+    jc .error               ; 调用失败会设置 CF 标志
 
-    add di, 20          ; ARDS 缓冲区指针后移
+    add di, 20              ; ARDS 缓冲区指针后移
 
-    inc word [ards_cnt] ; ARDS 计数器加 1
+    inc dword [ards_cnt]    ; ARDS 数量加 1
 
     cmp ebx, 0
     jnz .next
@@ -116,8 +116,12 @@ protected_mode:
     mov bl, 200             ; 读取的扇区数量
     call read_disk
 
+    ; 给内核传递参数
+    mov eax, 0x20260306     ; 内核魔数
+    mov ebx, ards_cnt       ; ARDS 数量指针
+
     ; 跳转到内核
-    jmp CODE_SELECTOR:0x10000
+    jmp CODE_SELECTOR:0x10040
 
     ud2                     ; 不可能执行到这里，如果执行到这里说明发生了错误，触发 ud2 异常
 
@@ -125,7 +129,6 @@ protected_mode:
 ; 功能：从磁盘读取数据
 ; 传入参数：edi —— 目标存放地址，ecx —— 起始扇区号，bl —— 扇区数量
 ; 传出参数：无
-; 注意：仅支持读取主通道的主盘
 ; ===============================
 read_disk:
     mov dx, 0x1f2           ; 0x1f2 —— 读取的扇区数量
@@ -237,9 +240,9 @@ gdt_data:
     db (MEMORY_BASE >> 24) & 0xff                   ; 段基地址第 24 ~ 31 位
 gdt_end:
 
-; ARDS 计数器
+; ARDS 数量
 ards_cnt:
-    dw 0
+    dd 0
 
 ; ARDS 缓冲区
 ards_buf:

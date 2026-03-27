@@ -1,21 +1,35 @@
-extern void console_init();
-extern void gdt_init();
-extern void interrupt_init();
-extern void clock_init();
-extern void time_init();
-extern void rtc_init();
-extern void hang();
+#include <os/types.h>
+#include <os/stdlib.h>
+#include <os/interrupt.h>
+
+void tss_init(void);
+void memory_map_init(void);
+void mapping_init(void);
+void arena_init(void);
+void interrupt_init(void);
+void clock_init(void);
+void keyboard_init(void);
+void time_init(void);
+void rtc_init(void);
+void task_init(void);
+void syscall_init(void);
 
 void kernel_init()
 {
-    console_init();
-    gdt_init();
+    tss_init();
+    memory_map_init();
+    mapping_init();
+    arena_init();
+    
     interrupt_init();
-    // clock_init();
-    time_init();
-    rtc_init();
+    clock_init();
+    keyboard_init();
 
-    // task_init();
-    asm volatile("sti");
-    hang();
+    time_init();
+    // rtc_init();
+
+    task_init();
+    syscall_init();
+
+    set_interrupt_state(true);
 }

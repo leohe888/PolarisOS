@@ -39,9 +39,10 @@ typedef struct gate_t
 typedef void *handler_t;                                // 中断处理函数
 
 void send_eoi(int vector);
-
 void set_interrupt_handler(u32 irq, handler_t handler); // 设置中断处理函数
-
 void set_interrupt_mask(u32 irq, bool enable);          // 设置中断屏蔽字
+bool interrupt_disable();                               // 清除 IF 位，返回设置之前的值
+bool get_interrupt_state();                             // 获得 IF 位
+void set_interrupt_state(bool state);                   // 设置 IF 位
 
 #endif
