@@ -5,6 +5,9 @@
 #include <os/task.h>
 #include <os/console.h>
 #include <os/memory.h>
+#include <os/device.h>
+#include <os/string.h>
+#include <os/buffer.h>
 
 #define LOGK(fmt, args...) DEBUGK(fmt, ##args)
 
@@ -20,30 +23,46 @@ void syscall_check(u32 nr)
     }
 }
 
-static void sys_default()
+static void sys_default(void)
 {
     panic("syscall not implemented!!!");
 }
 
-static u32 sys_test()
+static u32 sys_test(void)
 {
-    // LOGK("syscall test...\n");
+    char ch;
+    device_t *device;
+
+    device = device_find(DEV_IDE_DISK, 0);
+    assert(device);
+
+    buffer_t *buf = bread(device->dev, 0); // 读取主引导块
+
+    char *data = buf->data + SECTOR_SIZE;
+    memset(data, 0x5a, SECTOR_SIZE);
+
+    buf->dirty = true;
+
+    brelse(buf);
+
     return 255;
 }
+
+i32 console_write(void *dev, char *buf, u32 count);
 
 i32 sys_write(fd_t fd, const char *buf, u32 len)
 {
     if (fd == stdout || fd == stderr)
     {
-        return console_write(buf, len);
+        return console_write(NULL, buf, len);
     }
     panic("not implemented!!!");
     return 0;
 }
 
-time_t sys_time();
+time_t sys_time(void);
 
-void syscall_init()
+void syscall_init(void)
 {
     for (size_t i = 0; i < SYSCALL_SIZE; i++)
     {

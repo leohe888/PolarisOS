@@ -69,12 +69,12 @@ void clock_handler(int vector)
 
 extern u32 startup_time;
 
-time_t sys_time()
+time_t sys_time(void)
 {
     return startup_time + (jiffies * JIFFY) / 1000;
 }
 
-void pit_init()
+void pit_init(void)
 {
     // 配置计数器 0 —— 定时器
     outb(PIT_CTRL_REG, 0b00110100);
@@ -87,7 +87,7 @@ void pit_init()
     outb(PIT_CHAN2_REG, (u8)(BEEP_COUNTER >> 8));
 }
 
-void clock_init()
+void clock_init(void)
 {
     pit_init();
     set_interrupt_handler(IRQ_CLOCK, clock_handler);

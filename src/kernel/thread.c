@@ -33,28 +33,13 @@ static void user_init_thread(void)
     int status;
     while (true)
     {
-        // test();
-        pid_t pid = fork();
-
-        if (pid)
-        {
-            printf("fork after parent %d, %d, %d\n", pid, getpid(), getppid());
-            pid_t child = waitpid(pid, &status);
-            printf("wait pid %d status %d %d\n", child, status, time());
-        }
-        else
-        {
-            printf("fork after child %d, %d, %d\n", pid, getpid(), getppid());
-            // sleep(1000);
-            exit(0);
-        }
+        
         sleep(1000);
     }
 }
 
-void init_thread(void)
+void init_thread()
 {
-    // set_interrupt_state(true);
     char temp[100]; // 为栈顶有足够的空间
     task_to_user_mode(user_init_thread);
 }
@@ -62,10 +47,9 @@ void init_thread(void)
 void test_thread(void)
 {
     set_interrupt_state(true);
-    u32 counter = 0;
-
+    test();
     while (true)
     {
-        sleep(2000);
+        sleep(10);
     }
 }

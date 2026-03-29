@@ -18,6 +18,7 @@ header_start:
     dd 8                        ; size
 header_end:
 
+extern device_init
 extern console_init
 extern gdt_init
 extern memory_init
@@ -35,6 +36,7 @@ _start:
     push ebx
     push eax
 
+    call device_init        ; 虚拟设备初始化，需要在 console_init 之前，因为 console_init 使用了 device_install 来安装设备
     call console_init       ; 初始化控制台
     call gdt_init           ; 重新初始化 GDT
     lgdt [gdt_ptr]          ; 加载 GDT

@@ -11,6 +11,8 @@ void clock_init(void);
 void keyboard_init(void);
 void time_init(void);
 void rtc_init(void);
+void ide_init(void);
+void buffer_init(void);
 void task_init(void);
 void syscall_init(void);
 
@@ -27,6 +29,10 @@ void kernel_init()
 
     time_init();
     // rtc_init();
+
+    ide_init();
+
+    buffer_init();
 
     task_init();
     syscall_init();

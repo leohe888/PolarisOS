@@ -22,15 +22,17 @@
 
 #define PDE_MASK 0xFFC00000
 
-#define KERNEL_MAP_BITS 0x4000
-
-bitmap_t kernel_map;
-
 // 内核页表索引
 static u32 KERNEL_PAGE_TABLE[] = {
     0x2000,
     0x3000,
+    0x4000,
+    0x5000,
 };
+
+#define KERNEL_MAP_BITS 0x6000
+
+bitmap_t kernel_map;
 
 typedef struct ards_t
 {
@@ -46,6 +48,7 @@ static u32 free_pages = 0;  // 空闲物理内存页数
 
 #define used_pages (total_pages - free_pages) // 已用物理内存页数
 
+// 获取物理内存信息
 void memory_init(u32 magic, u32 addr)
 {
     u32 count = 0;
@@ -132,14 +135,14 @@ void memory_map_init()
 
     // 计算物理内存数组占用的页数
     memory_map_pages = div_round_up(total_pages, PAGE_SIZE);
-    LOGK("Memory map page count %d\n", memory_map_pages);
-
     free_pages -= memory_map_pages;
+    
+    LOGK("Memory map page count %d\n", memory_map_pages);
 
     // 清空物理内存数组
     memset((void *)memory_map, 0, memory_map_pages * PAGE_SIZE);
 
-    // 前 1M 的内存位置 以及 物理内存数组已占用的页，已被占用
+    // 将前 1MB 的物理内存和物理内存数组占用的物理内存对应的页面标记为已占用
     start_page = IDX(MEMORY_BASE) + memory_map_pages;
     for (size_t i = 0; i < start_page; i++)
     {
@@ -150,7 +153,7 @@ void memory_map_init()
 
     // 初始化内核虚拟内存位图
     u32 length = (IDX(KERNEL_MEMORY_SIZE) - IDX(MEMORY_BASE)) / 8;  // 需要 8 位对齐
-    bitmap_init(&kernel_map, (u8 *)KERNEL_MAP_BITS, length, IDX(MEMORY_BASE));
+    bitmap_init(&kernel_map, (char *)KERNEL_MAP_BITS, length, IDX(MEMORY_BASE));
     bitmap_scan(&kernel_map, memory_map_pages);
 }
 
@@ -363,22 +366,6 @@ void free_kpage(u32 vaddr, u32 count)
     LOGK("FREE  kernel pages 0x%p count %d\n", vaddr, count);
 }
 
-void memory_test()
-{
-    u32 *pages = (u32 *)(0x200000);
-    u32 count = 0x6ff;
-    for (size_t i = 0; i < count; i++)
-    {
-        pages[i] = alloc_kpage(1);
-        LOGK("0x%x\n", i);
-    }
-
-    for (size_t i = 0; i < count; i++)
-    {
-        free_kpage(pages[i], 1);
-    }
-}
-
 // 将 vaddr 映射物理内存
 void link_page(u32 vaddr)
 {
@@ -467,7 +454,7 @@ page_entry_t *copy_pde(void)
 
     page_entry_t *dentry;
 
-    for (size_t didx = 2; didx < 1023; didx++)  // 前两个页目录项指向是内核页表，最后一个页目录项指向页目录自己，不需要拷贝
+    for (size_t didx = (sizeof(KERNEL_PAGE_TABLE) / 4); didx < 1023; didx++)  // 前几个页目录项指向是内核页表，最后一个页目录项指向页目录自己，不需要拷贝
     {
         dentry = &pde[didx];
         if (!dentry->present)
@@ -508,7 +495,7 @@ void free_pde()
 
     page_entry_t *pde = get_pde();
 
-    for (size_t didx = 2; didx < 1023; didx++)
+    for (size_t didx = (sizeof(KERNEL_PAGE_TABLE) / 4); didx < 1023; didx++)
     {
         page_entry_t *dentry = &pde[didx];
         if (!dentry->present)
@@ -548,15 +535,15 @@ i32 sys_brk(void *addr)
     task_t *task = running_task();
     assert(task->uid != KERNEL_USER);
 
-    assert(KERNEL_MEMORY_SIZE < brk < USER_STACK_BOTTOM);
+    assert(KERNEL_MEMORY_SIZE <= brk && brk < USER_STACK_BOTTOM);
 
     u32 old_brk = task->brk;
 
     if (old_brk > brk)
     {
-        for (size_t i = brk; i < old_brk; i += PAGE_SIZE)
+        for (u32 page = brk; page < old_brk; page += PAGE_SIZE)
         {
-            unlink_page(i);
+            unlink_page(page);
         }
     }
     else if (IDX(brk - old_brk) > free_pages)
@@ -597,7 +584,7 @@ void page_fault(
     page_error_code_t *code = (page_error_code_t *)&error;
     task_t *task = running_task();
 
-    assert(KERNEL_MEMORY_SIZE <= vaddr < USER_STACK_TOP);
+    assert(KERNEL_MEMORY_SIZE <= vaddr && vaddr < USER_STACK_TOP);
 
     if (code->present)
     {

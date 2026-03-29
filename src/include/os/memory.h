@@ -3,15 +3,38 @@
 
 #include <os/types.h>
 
-#define PAGE_SIZE 0x1000                // 页面大小 4KB
-#define MEMORY_BASE 0x100000            // 可用内存起始地址 1MB
+// 页大小 4KB
+#define PAGE_SIZE 0x1000
 
-#define KERNEL_MEMORY_SIZE 0x800000     // 内核占用的内存大小 8M
-#define KERNEL_PAGE_DIR 0x1000          // 内核页目录地址
+// 可用内存开始的位置
+#define MEMORY_BASE 0x100000
 
-#define USER_STACK_TOP 0x8000000        // 用户栈顶地址 128M
-#define USER_STACK_SIZE 0x200000        // 用户栈大小 2M
-#define USER_STACK_BOTTOM (USER_STACK_TOP - USER_STACK_SIZE)    // 用户栈底地址 128M - 2M
+// 内核占用的内存大小 16MB
+#define KERNEL_MEMORY_SIZE 0x1000000
+
+// 内核缓存地址 8MB
+#define KERNEL_BUFFER_MEM 0x800000
+
+// 内核缓存大小 4MB
+#define KERNEL_BUFFER_SIZE 0x400000
+
+// 内存虚拟磁盘地址 12MB
+#define KERNEL_RAMDISK_MEM (KERNEL_BUFFER_MEM + KERNEL_BUFFER_SIZE)
+
+// 内存虚拟磁盘大小 4MB
+#define KERNEL_RAMDISK_SIZE 0x400000
+
+// 用户栈顶地址 128MB
+#define USER_STACK_TOP 0x8000000
+
+// 用户栈最大 2MB
+#define USER_STACK_SIZE 0x200000
+
+// 用户栈底地址 128MB - 2MB
+#define USER_STACK_BOTTOM (USER_STACK_TOP - USER_STACK_SIZE)
+
+// 内核页目录索引
+#define KERNEL_PAGE_DIR 0x1000
 
 typedef struct page_entry_t
 {

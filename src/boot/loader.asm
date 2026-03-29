@@ -178,8 +178,8 @@ read_disk:
 
 .waits:
     mov dx, 0x1f7           ; 0x1f7 —— 状态
-                            ; 位 7：BSY —— Busy，磁盘忙
-                            ; 位 3：DRQ —— Data Request，数据准备好
+                            ; 位 7（BSY）：0 表示磁盘准备好，1 表示磁盘忙
+                            ; 位 3（DRQ）：0 表示数据未准备好，1 表示数据准备好
 .check:
     in al, dx
 

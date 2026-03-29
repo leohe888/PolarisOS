@@ -4,7 +4,9 @@
 #include <os/types.h>
 
 #define element_offset(type, member) (u32)(&((type *)0)->member)    // 获取结构体成员相对于结构体起始地址的偏移  
-#define element_entry(type, member, ptr) (type *)((u32)ptr - element_offset(type, member))  // 获取结构体成员所在结构体的起始地址
+#define element_entry(type, member, ptr) (type *)((u32)ptr - element_offset(type, member))  // 根据结点成员的起始地址获取结构体成员所在结构体的起始地址
+#define element_node_offset(type, node, key) ((int)(&((type *)0)->key) - (int)(&((type *)0)->node)) // 获取结构体中其他成员相对于结点成员的偏移
+#define element_node_key(node, offset) *(int *)((int)node + offset) // 根据结点成员获取结构体中其他成员的值
 
 // 链表结点
 typedef struct list_node_t
@@ -52,5 +54,8 @@ bool list_empty(list_t *list);
 
 // 获得链表长度
 u32 list_size(list_t *list);
+
+// 链表插入排序
+void list_insert_sort(list_t *list, list_node_t *node, int offset);
 
 #endif

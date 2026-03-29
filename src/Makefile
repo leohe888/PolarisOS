@@ -55,6 +55,7 @@ $(BUILD)/kernel.bin: \
 	$(BUILD)/kernel/start.o \
 	$(BUILD)/kernel/main.o \
 	$(BUILD)/kernel/io.o \
+	$(BUILD)/kernel/device.o \
 	$(BUILD)/kernel/console.o \
 	$(BUILD)/kernel/printk.o \
 	$(BUILD)/kernel/assert.o \
@@ -70,9 +71,11 @@ $(BUILD)/kernel.bin: \
 	$(BUILD)/kernel/clock.o \
 	$(BUILD)/kernel/time.o \
 	$(BUILD)/kernel/rtc.o \
+	$(BUILD)/kernel/ide.o \
 	$(BUILD)/kernel/memory.o \
 	$(BUILD)/kernel/arena.o \
 	$(BUILD)/kernel/keyboard.o \
+	$(BUILD)/kernel/buffer.o \
 	$(BUILD)/lib/bitmap.o \
 	$(BUILD)/lib/list.o \
 	$(BUILD)/lib/fifo.o \
@@ -93,74 +96,63 @@ $(BUILD)/system.bin: $(BUILD)/kernel.bin
 $(BUILD)/system.map: $(BUILD)/kernel.bin
 	nm $^ | sort > $@
 
-# 创建硬盘镜像文件 master.img
+# 创建一个 16MB 的硬盘镜像文件 master.img
 $(BUILD)/master.img: \
 	$(BUILD)/boot/mbr.bin \
 	$(BUILD)/boot/loader.bin \
 	$(BUILD)/system.bin \
-	$(BUILD)/system.map
+	$(BUILD)/system.map	\
+	$(SRC)/utils/master.sfdisk \
 
+# 创建一个 16MB 的硬盘镜像
 	yes | bximage -q -hd=16 -func=create -sectsize=512 -imgmode=flat $@
+# 将 mbr.bin 写入硬盘
 	dd if=$(BUILD)/boot/mbr.bin of=$@ bs=512 count=1 conv=notrunc
+# 将 loader.bin 写入硬盘
 	dd if=$(BUILD)/boot/loader.bin of=$@ bs=512 count=4 seek=2 conv=notrunc
+# 将 system.bin 写入硬盘
 	dd if=$(BUILD)/system.bin of=$@ bs=512 count=200 seek=10 conv=notrunc
+# 对硬盘进行分区
+	sfdisk $@ < $(SRC)/utils/master.sfdisk
 
-# 创建 iso 文件 kernel.iso
-$(BUILD)/kernel.iso : $(BUILD)/kernel.bin $(SRC)/utils/grub.cfg
+# 创建一个 32MB 的硬盘镜像文件 slave.img
+$(BUILD)/slave.img:
+	yes | bximage -q -hd=32 -func=create -sectsize=512 -imgmode=flat $@
 
-# 检测内核文件是否合法
-	grub-file --is-x86-multiboot2 $<
-# 创建 iso 目录
-	mkdir -p $(BUILD)/iso/boot/grub
-# 拷贝内核文件
-	cp $< $(BUILD)/iso/boot
-# 拷贝 grub 配置文件
-	cp $(SRC)/utils/grub.cfg $(BUILD)/iso/boot/grub
-# 生成 iso 文件
-	grub-mkrescue -o $@ $(BUILD)/iso
+IMAGES := $(BUILD)/master.img $(BUILD)/slave.img
 
-.PHONY: test
-test: $(BUILD)/master.img
+.PHONY: image
+image: $(IMAGES)
 
 .PHONY: clean
 clean:
 	rm -rf $(BUILD)
 
 .PHONY: bochs
-bochs: $(BUILD)/master.img
+bochs: $(IMAGES)
 	bochs -q -f ../bochs/bochsrc -unlock
 
-.PHONY: bochsgrub
-bochsgrub: $(BUILD)/kernel.iso
-	bochs -q -f ../bochs/bochsrc.grub -unlock
+QEMU := qemu-system-i386 # 虚拟机
+QEMU += -m 32M # 内存
+QEMU += -audiodev pa,id=hda # 音频设备
+QEMU += -machine pcspk-audiodev=hda # PC Speaker 设备
+QEMU += -rtc base=localtime # 设备本地时间
+QEMU += -drive file=$(BUILD)/master.img,if=ide,index=0,media=disk,format=raw # 主硬盘
+QEMU += -drive file=$(BUILD)/slave.img,if=ide,index=1,media=disk,format=raw	# 从硬盘
 
-QEMU:= qemu-system-i386 \
-	-m 32M \
-	-audiodev pa,id=hda \
-	-machine pcspk-audiodev=hda \
-	-rtc base=localtime \
+QEMU_DISK := -boot c	# 从第一块硬盘启动
 
-QEMU_DISK:=-boot c \
-	-drive file=$(BUILD)/master.img,if=ide,index=0,media=disk,format=raw \
-
-QEMU_CDROM:=-boot d \
-	-drive file=$(BUILD)/kernel.iso,media=cdrom \
-
-QEMU_DEBUG:= -s -S
+QEMU_DEBUG := -s -S	# -s：指示 QEMU 在启动时开启一个 GDB 远程调试服务器，并监听本地的 TCP 端口 1234。-S：指示 QEMU 在启动时暂停执行，等待 GDB 连接。
 
 .PHONY: qemu
-qemu: $(BUILD)/master.img
+qemu: $(IMAGES)
 	$(QEMU) $(QEMU_DISK)
 
 .PHONY: qemugdb
-qemugdb: $(BUILD)/master.img
+qemugdb: $(IMAGES)
 	$(QEMU) $(QEMU_DISK) $(QEMU_DEBUG)
 
-.PHONY: qemugrub
-qemugrub: $(BUILD)/kernel.iso
-	$(QEMU) $(QEMU_CDROM) \
-	# $(QEMU_DEBUG)
-
+# VMWare 磁盘转换
 $(BUILD)/master.vmdk: $(BUILD)/master.img
 	qemu-img convert -O vmdk $< $@
 
