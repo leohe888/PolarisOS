@@ -132,7 +132,10 @@ buffer_t *getblk(dev_t dev, idx_t block)
 {
     buffer_t *bf = get_from_hash_table(dev, block);
     if (bf)
+    {
+        bf->count++;
         return bf;
+    }
 
     bf = get_free_buffer();
     assert(bf->count == 0);
@@ -152,14 +155,19 @@ buffer_t *bread(dev_t dev, idx_t block)
     assert(bf != NULL);
     if (bf->valid)
     {
-        bf->count++;
         return bf;
     }
 
-    device_request(bf->dev, bf->data, BLOCK_SECS, bf->block * BLOCK_SECS, 0, REQ_READ);
+    lock_acquire(&bf->lock);
 
-    bf->dirty = false;
-    bf->valid = true;
+    if (!bf->valid)
+    {
+        device_request(bf->dev, bf->data, BLOCK_SECS, bf->block * BLOCK_SECS, 0, REQ_READ);
+        bf->dirty = false;
+        bf->valid = true;
+    }
+
+    lock_release(&bf->lock);
     return bf;
 }
 
@@ -179,21 +187,23 @@ void brelse(buffer_t *bf)
 {
     if (!bf)
         return;
-    bf->count--;
-    assert(bf->count >= 0);
-    if (!bf->count)
-    {
-        if (bf->rnode.next) // 如果已经加入了某一个链表，则在此链表中移除
-        {
-            list_remove(&bf->rnode);
-        }
-
-        list_push_front(&free_list, &bf->rnode);
-    }
     if (bf->dirty)
     {
         bwrite(bf); // todo need write?
     }
+
+    bf->count--;
+    assert(bf->count >= 0);
+    if (bf->count) // 还有人用，直接返回
+        return;
+
+    // if (bf->rnode.next)
+    // {
+    //     list_remove(&bf->rnode);
+    // }
+    assert(!bf->rnode.next);
+    assert(!bf->rnode.prev);
+    list_push_front(&free_list, &bf->rnode);
     if (!list_empty(&wait_list))
     {
         task_t *task = element_entry(task_t, node, list_pop_back(&wait_list));

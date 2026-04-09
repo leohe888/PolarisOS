@@ -1,5 +1,3 @@
-include Makefile
-
 $(BUILD)/kernel.iso : $(BUILD)/kernel.bin $(SRC)/utils/grub.cfg
 
 # 检测内核文件是否合法
@@ -17,15 +15,14 @@ $(BUILD)/kernel.iso : $(BUILD)/kernel.bin $(SRC)/utils/grub.cfg
 bochsgrub: $(BUILD)/kernel.iso
 	bochs -q -f ../bochs/bochsrc.grub -unlock
 
-QEMU += -drive file=$(BUILD)/kernel.iso,media=cdrom # 光盘镜像
+QEMU_CDROM := -drive file=$(BUILD)/kernel.iso,media=cdrom # 光盘镜像
 
-QEMU_CDROM := -boot d	# 从光盘启动
+QEMU_CDROM_BOOT := -boot d	# 从光盘启动
 
 .PHONY: qemugrub
 qemugrub: $(BUILD)/kernel.iso $(IMAGES)
-	$(QEMU) $(QEMU_CDROM) \
+	$(QEMU) $(QEMU_CDROM) $(QEMU_CDROM_BOOT) \
 	# $(QEMU_DEBUG)
 
 .PHONY: cdrom
 cdrom: $(BUILD)/kernel.iso $(IMAGES)
-	-

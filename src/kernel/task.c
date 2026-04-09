@@ -11,6 +11,7 @@
 #include <os/global.h>
 #include <os/arena.h>
 #include <os/debug.h>
+#include <os/fs.h>
 
 #define LOGK(fmt, args...) DEBUGK(fmt, ##args)
 
@@ -20,6 +21,7 @@ extern u32 volatile jiffies;
 extern u32 jiffy;
 extern bitmap_t kernel_map;
 extern tss_t tss;
+extern file_t file_table[];
 
 void task_switch(task_t *next);
 
@@ -57,6 +59,29 @@ pid_t sys_getppid(void)
 {
     task_t *task = running_task();
     return task->ppid;
+}
+
+fd_t task_get_fd(task_t *task)
+{
+    fd_t i;
+    for (i = 3; i < TASK_FILE_NR; i++)
+    {
+        if (!task->files[i])
+            break;
+    }
+    if (i == TASK_FILE_NR)
+    {
+        panic("Exceed task max open files.");
+    }
+    return i;
+}
+
+void task_put_fd(task_t *task, fd_t fd)
+{
+    if (fd < 3)
+        return;
+    assert(fd < TASK_FILE_NR);
+    task->files[fd] = NULL;
 }
 
 // 从任务数组中查找某种状态的任务，自己除外
@@ -248,9 +273,25 @@ static task_t *task_create(target_t target, const char *name, u32 priority, u32 
     task->jiffies = 0;
     task->state = TASK_READY;
     task->uid = uid;
+    task->gid = 0; // TODO: group
     task->vmap = &kernel_map;
-    task->pde = KERNEL_PAGE_DIR;
+    task->pde = KERNEL_PAGE_DIR; // page directory entry
     task->brk = KERNEL_MEMORY_SIZE;
+    task->iroot = task->ipwd = get_root_inode();
+    task->iroot->count += 2;
+
+    task->pwd = (void *)alloc_kpage(1);
+    strcpy(task->pwd, "/");
+
+    task->umask = 0022; // 对应 0755
+
+    task->files[STDIN_FILENO] = &file_table[STDIN_FILENO];
+    task->files[STDOUT_FILENO] = &file_table[STDOUT_FILENO];
+    task->files[STDERR_FILENO] = &file_table[STDERR_FILENO];
+    task->files[STDIN_FILENO]->count++;
+    task->files[STDOUT_FILENO]->count++;
+    task->files[STDERR_FILENO]->count++;
+
     task->magic = OS_MAGIC;
 
     return task;
@@ -356,6 +397,22 @@ pid_t task_fork(void)
     // 拷贝页目录
     child->pde = (u32)copy_pde();
 
+    // 拷贝 pwd
+    child->pwd = (char *)alloc_kpage(1);
+    strncpy(child->pwd, task->pwd, PAGE_SIZE);
+
+    // 工作目录引用加一
+    task->ipwd->count++;
+    task->iroot->count++;
+
+    // 文件引用加一
+    for (size_t i = 0; i < TASK_FILE_NR; i++)
+    {
+        file_t *file = child->files[i];
+        if (file)
+            file->count++;
+    }
+
     // 构造 child 内核栈
     task_build_stack(child); // ROP
     // schedule();
@@ -377,6 +434,19 @@ void task_exit(i32 status)
 
     free_kpage((u32)task->vmap->bits, 1);
     kfree(task->vmap);
+
+    free_kpage((u32)task->pwd, 1);
+    iput(task->ipwd);
+    iput(task->iroot);
+
+    for (size_t i = 0; i < TASK_FILE_NR; i++)
+    {
+        file_t *file = task->files[i];
+        if (file)
+        {
+            close(i);
+        }
+    }
 
     // 将子进程的父进程赋值为自己的父进程
     for (size_t i = 2; i < NR_TASKS; i++)

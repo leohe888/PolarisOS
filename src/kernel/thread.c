@@ -4,6 +4,8 @@
 #include <os/task.h>
 #include <os/stdio.h>
 #include <os/arena.h>
+#include <os/fs.h>
+#include <os/string.h>
 
 #define LOGK(fmt, args...) DEBUGK(fmt, ##args)
 
@@ -28,28 +30,43 @@ void test_recursion(void)
     test_recursion();
 }
 
-static void user_init_thread(void)
+void posh_main();
+
+static void user_init_thread()
 {
-    int status;
     while (true)
-    {
-        
-        sleep(1000);
+    {   
+        u32 status;
+        pid_t pid = fork();
+        if (pid)
+        {
+            pid_t child = waitpid(pid, &status);
+            printf("wait pid %d status %d %d\n", child, status, time());
+        }
+        else
+        {
+            posh_main();
+        }
     }
 }
 
-void init_thread()
+
+void dev_init();
+
+void init_thread(void)
 {
     char temp[100]; // 为栈顶有足够的空间
+    dev_init();
     task_to_user_mode(user_init_thread);
 }
 
 void test_thread(void)
 {
     set_interrupt_state(true);
-    test();
+
     while (true)
     {
+        // test();
         sleep(10);
     }
 }

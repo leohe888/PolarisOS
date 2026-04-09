@@ -8,6 +8,7 @@
 #include <os/device.h>
 #include <os/string.h>
 #include <os/buffer.h>
+#include <os/fs.h>
 
 #define LOGK(fmt, args...) DEBUGK(fmt, ##args)
 
@@ -30,37 +31,43 @@ static void sys_default(void)
 
 static u32 sys_test(void)
 {
-    char ch;
-    device_t *device;
-
-    device = device_find(DEV_IDE_DISK, 0);
-    assert(device);
-
-    buffer_t *buf = bread(device->dev, 0); // 读取主引导块
-
-    char *data = buf->data + SECTOR_SIZE;
-    memset(data, 0x5a, SECTOR_SIZE);
-
-    buf->dirty = true;
-
-    brelse(buf);
-
+    LOGK("sys_test called!!!\n");
     return 255;
 }
 
-i32 console_write(void *dev, char *buf, u32 count);
+int sys_read();
+int sys_write();
+int sys_lseek();
+int sys_readdir();
 
-i32 sys_write(fd_t fd, const char *buf, u32 len)
-{
-    if (fd == stdout || fd == stderr)
-    {
-        return console_write(NULL, buf, len);
-    }
-    panic("not implemented!!!");
-    return 0;
-}
+fd_t sys_open();
+fd_t sys_creat();
+void sys_close();
 
-time_t sys_time(void);
+int sys_chdir();
+int sys_chroot();
+char *sys_getcwd();
+
+int sys_mkdir();
+int sys_rmdir();
+
+int sys_link();
+int sys_unlink();
+
+time_t sys_time();
+mode_t sys_umask();
+
+void console_clear();
+
+int sys_stat();
+int sys_fstat();
+
+int sys_mknod();
+
+int sys_mount();
+int sys_umount();
+
+int sys_mkfs();
 
 void syscall_init(void)
 {
@@ -83,7 +90,38 @@ void syscall_init(void)
 
     syscall_table[SYS_NR_BRK] = sys_brk;
 
+    syscall_table[SYS_NR_READ] = sys_read;
     syscall_table[SYS_NR_WRITE] = sys_write;
 
+    syscall_table[SYS_NR_MKDIR] = sys_mkdir;
+    syscall_table[SYS_NR_RMDIR] = sys_rmdir;
+
+    syscall_table[SYS_NR_OPEN] = sys_open;
+    syscall_table[SYS_NR_CREAT] = sys_creat;
+    syscall_table[SYS_NR_CLOSE] = sys_close;
+    syscall_table[SYS_NR_LSEEK] = sys_lseek;
+    syscall_table[SYS_NR_READDIR] = sys_readdir;
+
+    syscall_table[SYS_NR_LINK] = sys_link;
+    syscall_table[SYS_NR_UNLINK] = sys_unlink;
+
     syscall_table[SYS_NR_TIME] = sys_time;
+
+    syscall_table[SYS_NR_UMASK] = sys_umask;
+
+    syscall_table[SYS_NR_CHDIR] = sys_chdir;
+    syscall_table[SYS_NR_CHROOT] = sys_chroot;
+    syscall_table[SYS_NR_GETCWD] = sys_getcwd;
+
+    syscall_table[SYS_NR_CLEAR] = console_clear;
+
+    syscall_table[SYS_NR_STAT] = sys_stat;
+    syscall_table[SYS_NR_FSTAT] = sys_fstat;
+
+    syscall_table[SYS_NR_MKNOD] = sys_mknod;
+
+    syscall_table[SYS_NR_MOUNT] = sys_mount;
+    syscall_table[SYS_NR_UMOUNT] = sys_umount;
+
+    syscall_table[SYS_NR_MKFS] = sys_mkfs;
 }

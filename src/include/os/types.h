@@ -37,12 +37,16 @@ typedef i32 dev_t;
 typedef u32 time_t;
 typedef u32 idx_t;
 
+typedef u16 mode_t;
+
 typedef i32 fd_t;
 typedef enum std_fd_t
 {
-    stdin,
-    stdout,
-    stderr,
+    STDIN_FILENO,
+    STDOUT_FILENO,
+    STDERR_FILENO,
 } std_fd_t;
+
+typedef i32 off_t; // 文件偏移
 
 #endif
