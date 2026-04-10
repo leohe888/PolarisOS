@@ -6,7 +6,7 @@
 // 页大小 4KB
 #define PAGE_SIZE 0x1000
 
-// 可用内存开始的位置
+// 可用内存起始地址 1MB
 #define MEMORY_BASE 0x100000
 
 // 内核占用的内存大小 16MB
@@ -24,13 +24,22 @@
 // 内存虚拟磁盘大小 4MB
 #define KERNEL_RAMDISK_SIZE 0x400000
 
-// 用户栈顶地址 128MB
-#define USER_STACK_TOP 0x8000000
+// 用户程序地址
+#define USER_EXEC_ADDR KERNEL_MEMORY_SIZE
 
-// 用户栈最大 2MB
+// 用户映射内存开始位置 128MB
+#define USER_MMAP_ADDR 0x8000000
+
+// 用户映射内存大小 128MB
+#define USER_MMAP_SIZE 0x8000000
+
+// 用户栈顶地址 256MB
+#define USER_STACK_TOP 0x10000000
+
+// 用户栈大小 2MB
 #define USER_STACK_SIZE 0x200000
 
-// 用户栈底地址 128MB - 2MB
+// 用户栈底地址 256MB - 2MB
 #define USER_STACK_BOTTOM (USER_STACK_TOP - USER_STACK_SIZE)
 
 // 内核页目录索引
@@ -47,7 +56,9 @@ typedef struct page_entry_t
     u8 dirty : 1;    // 脏页，表示该页缓冲被写过
     u8 pat : 1;      // page attribute table 页大小 4K/4M
     u8 global : 1;   // 全局，所有进程都用到了，该页不刷新缓冲
-    u8 ignored : 3;  // 该安排的都安排了，送给操作系统吧
+    u8 shared : 1;   // 共享内存页，与 CPU 无关
+    u8 privat : 1;   // 私有内存页，与 CPU 无关
+    u8 readonly : 1; // 只读内存页，与 CPU 无关
     u32 index : 20;  // 页索引
 } _packed page_entry_t;
 
@@ -66,6 +77,12 @@ u32 alloc_kpage(u32 count);
 // 释放 count 个连续的内核页
 void free_kpage(u32 vaddr, u32 count);
 
+// 获取页表项
+page_entry_t *get_entry(u32 vaddr, bool create);
+
+// 刷新快表
+void flush_tlb(u32 vaddr);
+
 // 将 vaddr 映射物理内存
 void link_page(u32 vaddr);
 
@@ -77,8 +94,5 @@ page_entry_t *copy_pde();
 
 // 释放页目录
 void free_pde();
-
-// 系统调用 brk
-i32 sys_brk(void *addr);
 
 #endif

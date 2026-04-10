@@ -35,6 +35,8 @@ static u32 sys_test(void)
     return 255;
 }
 
+void sys_execve();
+
 int sys_read();
 int sys_write();
 int sys_lseek();
@@ -69,6 +71,10 @@ int sys_umount();
 
 int sys_mkfs();
 
+int sys_brk();
+int sys_mmap();
+int sys_munmap();
+
 void syscall_init(void)
 {
     for (size_t i = 0; i < SYSCALL_SIZE; i++)
@@ -82,6 +88,8 @@ void syscall_init(void)
     syscall_table[SYS_NR_FORK] = task_fork;
     syscall_table[SYS_NR_WAITPID] = task_waitpid;
 
+    syscall_table[SYS_NR_EXECVE] = sys_execve;
+
     syscall_table[SYS_NR_SLEEP] = task_sleep;
     syscall_table[SYS_NR_YIELD] = task_yield;
 
@@ -89,6 +97,8 @@ void syscall_init(void)
     syscall_table[SYS_NR_GETPPID] = sys_getppid;
 
     syscall_table[SYS_NR_BRK] = sys_brk;
+    syscall_table[SYS_NR_MMAP] = sys_mmap;
+    syscall_table[SYS_NR_MUNMAP] = sys_munmap;
 
     syscall_table[SYS_NR_READ] = sys_read;
     syscall_table[SYS_NR_WRITE] = sys_write;

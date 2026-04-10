@@ -5,6 +5,7 @@ $(BUILD)/master.img: \
 	$(BUILD)/system.bin \
 	$(BUILD)/system.map	\
 	$(SRC)/utils/master.sfdisk \
+	$(BUILD)/builtin/hello.out \
 
 # 创建一个 16MB 的硬盘镜像
 	yes | bximage -q -hd=16 -func=create -sectsize=512 -imgmode=flat $@
@@ -39,6 +40,9 @@ $(BUILD)/master.img: \
 
 # 创建文件
 	echo "hello PolarisOS!!!, from root direcotry file..." > /mnt/hello.txt
+
+# 拷贝程序
+	cp $(BUILD)/builtin/hello.out /mnt/hello.out
 
 # 卸载文件系统
 	sudo umount /mnt
