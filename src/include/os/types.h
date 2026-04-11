@@ -16,6 +16,12 @@
 #define false 0
 #endif
 
+// 标记弱符号
+#define weak __attribute__((__weak__))
+
+// 标记不会返回的函数
+#define noreturn __attribute__((__noreturn__))
+
 #define _packed __attribute__((packed))                 // 不使用内存对齐
 #define _inline __attribute__((always_inline)) inline   // 内联函数
 

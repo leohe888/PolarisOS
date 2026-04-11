@@ -26,6 +26,7 @@ CFLAGS		+= -nostdlib			# 不使用标准库
 CFLAGS		+= -fno-pic				# 不生成位置无关代码
 CFLAGS		+= -fno-pie				# 不生成位置无关可执行文件
 CFLAGS		+= -fno-stack-protector	# 不使用栈保护
+CFLAGS		+= -DPolarisOS			# 定义 PolarisOS
 CFLAGS		:= $(strip ${CFLAGS})
 
 DEBUG 	:= -g
@@ -44,7 +45,27 @@ $(BUILD)/%.o: $(SRC)/%.c
 	mkdir -p $(dir $@)
 	gcc $(CFLAGS) $(DEBUG) $(INCLUDE) -c $< -o $@
 
-$(BUILD)/builtin/%.out: $(BUILD)/builtin/%.o
+BUILTIN_APPS := \
+	$(BUILD)/builtin/env.out \
+	$(BUILD)/builtin/echo.out \
+	$(BUILD)/builtin/cat.out \
+	$(BUILD)/builtin/ls.out \
+
+$(BUILD)/lib/libc.o: $(BUILD)/lib/crt.o \
+	$(BUILD)/lib/crt1.o \
+	$(BUILD)/lib/string.o \
+	$(BUILD)/lib/vsprintf.o \
+	$(BUILD)/lib/stdlib.o \
+	$(BUILD)/lib/syscall.o \
+	$(BUILD)/lib/printf.o \
+	$(BUILD)/lib/assert.o \
+	$(BUILD)/lib/time.o \
+
+	ld -m elf_i386 -r $^ -o $@
+
+$(BUILD)/builtin/%.out: $(BUILD)/builtin/%.o \
+	$(BUILD)/lib/libc.o \
+	
 	ld -m elf_i386 -static $^ -o $@ -Ttext 0x1001000
 
 LDFLAGS:= -m elf_i386 \
