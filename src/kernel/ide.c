@@ -393,6 +393,13 @@ static u32 ide_identify(ide_disk_t *disk, u16 *buf)
         goto rollback;
     }
 
+    // 简单兼容 VMWare，目前没有找到更好的办法
+    if (params->total_lba > (1 << 28))
+    {
+        params->total_lba = 0;
+        goto rollback;
+    }
+
     // 因为 x86 是小端序，如果硬盘想发送 "AB"（即 0x4142），由于小端序存储，内存里变成了 0x42 ('B') 在前，0x41 ('A') 在后。因此，需要将相邻的两个字节互换位置。
     ide_swap_pairs(params->serial, sizeof(params->serial));
     LOGK("disk %s serial number %s\n", disk->name, params->serial);

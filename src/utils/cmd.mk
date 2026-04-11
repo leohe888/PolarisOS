@@ -15,6 +15,13 @@ QEMU += -rtc base=localtime # 设备本地时间
 QEMU_DISK := -drive file=$(BUILD)/master.img,if=ide,index=0,media=disk,format=raw # 主硬盘
 QEMU_DISK += -drive file=$(BUILD)/slave.img,if=ide,index=1,media=disk,format=raw	# 从硬盘
 
+QEMU+= -chardev stdio,mux=on,id=com1 # 字符设备 1，宿主机的标准输入输出
+# QEMU+= -chardev vc,mux=on,id=com1 # 字符设备 1，QEMU 的虚拟控制台
+# QEMU+= -chardev vc,mux=on,id=com2 # 字符设备 2，QEMU 的虚拟控制台
+# QEMU+= -chardev udp,mux=on,id=com2,port=7777,ipv4=on # 字符设备 2，UDP 端口 7777
+QEMU+= -serial chardev:com1 # 串口 1
+# QEMU+= -serial chardev:com2 # 串口 2
+
 QEMU_DISK_BOOT := -boot c	# 从第一块硬盘启动
 
 QEMU_DEBUG := -s -S	# -s：指示 QEMU 在启动时开启一个 GDB 远程调试服务器，并监听本地的 TCP 端口 1234。-S：指示 QEMU 在启动时暂停执行，等待 GDB 连接。

@@ -63,32 +63,11 @@ void builtin_logo()
 
 void builtin_test(int argc, char *argv[])
 {
-    // test();
-    // mkfs("/dev/hdb1", 0);
-
-    u32 status;
-
-    int *counter = (int *)mmap(0, sizeof(int), PROT_WRITE, MAP_SHARED, EOF, 0);
-    pid_t pid = fork();
-
-    if (pid)
-    {
-        // pid_t child = waitpid(pid, &status);
-        // printf("wait pid %d status %d %d\n", child, status, time());
-        while (true)
-        {
-            (*counter)++;
-            sleep(300);
-        }
-    }
-    else
-    {
-        while (true)
-        {
-            printf("counter %d\n", *counter);
-            sleep(100);
-        }
-    }
+    printf("osh test starting...\n");
+    // while (true)
+    // {
+    //     test();
+    // }
 }
 
 void builtin_pwd()

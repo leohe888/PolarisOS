@@ -10,6 +10,7 @@ void interrupt_init(void);
 void clock_init(void);
 void keyboard_init(void);
 void time_init(void);
+void serial_init(void);
 void rtc_init(void);
 void ide_init(void);
 void ramdisk_init(void);
@@ -31,6 +32,7 @@ void kernel_init()
     clock_init();
     keyboard_init();
     time_init();
+    serial_init();
     // rtc_init();
     ide_init();
     ramdisk_init();

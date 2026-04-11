@@ -23,13 +23,13 @@ $(BUILD)/master.img: \
 	sfdisk $@ < $(SRC)/utils/master.sfdisk
 
 # 挂载设备
-	sudo losetup /dev/loop4 --partscan $@
+	sudo losetup /dev/loop17 --partscan $@
 
-# 创建 minux 文件系统（-1：第一版；-n 14：文件名最大长度为 14，/dev/loop4p1：loop4 设备的第一个分区）
-	sudo mkfs.minix -1 -n 14 /dev/loop4p1
+# 创建 minux 文件系统（-1：第一版；-n 14：文件名最大长度为 14，/dev/loop17p1：loop17 设备的第一个分区）
+	sudo mkfs.minix -1 -n 14 /dev/loop17p1
 
 # 挂载文件系统
-	sudo mount /dev/loop4p1 /mnt
+	sudo mount /dev/loop17p1 /mnt
 
 # 切换所有者
 	sudo chown ${USER} /mnt 
@@ -48,7 +48,7 @@ $(BUILD)/master.img: \
 	sudo umount /mnt
 
 # 卸载设备
-	sudo losetup -d /dev/loop4
+	sudo losetup -d /dev/loop17
 
 # 创建一个 32MB 的硬盘镜像文件 slave.img
 $(BUILD)/slave.img:
@@ -60,13 +60,13 @@ $(BUILD)/slave.img:
 	sfdisk $@ < $(SRC)/utils/slave.sfdisk
 
 # 挂载设备
-	sudo losetup /dev/loop4 --partscan $@
+	sudo losetup /dev/loop17 --partscan $@
 
 # 创建 minux 文件系统
-	sudo mkfs.minix -1 -n 14 /dev/loop4p1
+	sudo mkfs.minix -1 -n 14 /dev/loop17p1
 
 # 挂载文件系统
-	sudo mount /dev/loop4p1 /mnt
+	sudo mount /dev/loop17p1 /mnt
 
 # 切换所有者
 	sudo chown ${USER} /mnt 
@@ -78,27 +78,27 @@ $(BUILD)/slave.img:
 	sudo umount /mnt
 
 # 卸载设备
-	sudo losetup -d /dev/loop4
+	sudo losetup -d /dev/loop17
 
 .PHONY: mount0
 mount0: $(BUILD)/master.img
-	sudo losetup /dev/loop4 --partscan $<
-	sudo mount /dev/loop4p1 /mnt
+	sudo losetup /dev/loop17 --partscan $<
+	sudo mount /dev/loop17p1 /mnt
 	sudo chown ${USER} /mnt 
 
 .PHONY: umount0
-unmount0: /dev/loop4
+unmount0: /dev/loop17
 	-sudo umount /mnt
 	-sudo losetup -d $<
 
 .PHONY: mount1
 mount1: $(BUILD)/slave.img
-	sudo losetup /dev/loop4 --partscan $<
-	sudo mount /dev/loop4p1 /mnt
+	sudo losetup /dev/loop17 --partscan $<
+	sudo mount /dev/loop17p1 /mnt
 	sudo chown ${USER} /mnt 
 
 .PHONY: umount1
-unmount1: /dev/loop4
+unmount1: /dev/loop17
 	-sudo umount /mnt
 	-sudo losetup -d $<
 

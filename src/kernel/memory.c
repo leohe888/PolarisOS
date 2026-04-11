@@ -169,8 +169,8 @@ static u32 get_page()
         if (!memory_map[i])
         {
             memory_map[i] = 1;
-            free_pages--;
             assert(free_pages >= 0);
+            free_pages--;
             u32 page = PAGE(i);
             LOGK("GET page 0x%p\n", page);
             return page;
