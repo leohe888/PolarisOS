@@ -10,6 +10,7 @@
 #include <os/task.h>
 #include <os/syscall.h>
 #include <os/fs.h>
+#include <os/printk.h>
 
 #define LOGK(fmt, args...) DEBUGK(fmt, ##args)
 // #define LOGK(fmt, args...)
@@ -262,6 +263,7 @@ void mapping_init()
 
         page_entry_t *dentry = &pde[didx];
         entry_init(dentry, IDX((u32)pte));
+        dentry->user = 0; // 只能被内核访问
 
         for (idx_t tidx = 0; tidx < 1024; tidx++, index++)
         {
@@ -271,6 +273,7 @@ void mapping_init()
 
             page_entry_t *tentry = &pte[tidx];
             entry_init(tentry, index);
+            tentry->user = 0;      // 只能被内核访问
             memory_map[index] = 1; // 设置物理内存数组，该页被占用
         }
     }
@@ -659,7 +662,15 @@ void page_fault(
     page_error_code_t *code = (page_error_code_t *)&error;
     task_t *task = running_task();
 
-    assert(KERNEL_MEMORY_SIZE <= vaddr && vaddr < USER_STACK_TOP);
+    // assert(KERNEL_MEMORY_SIZE <= vaddr && vaddr < USER_STACK_TOP);
+
+    // 如果用户程序访问了不该访问的内存
+    if (vaddr < USER_EXEC_ADDR || vaddr >= USER_STACK_TOP)
+    {
+        assert(task->uid);
+        printk("Segmentation Fault!!!\n");
+        task_exit(-1);
+    }
 
     if (code->present)
     {
@@ -697,5 +708,6 @@ void page_fault(
         return;
     }
 
+    LOGK("task 0x%p name %s brk 0x%p page fault\n", task, task->name, task->brk);
     panic("page fault!!!");
 }

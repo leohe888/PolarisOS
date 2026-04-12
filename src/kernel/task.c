@@ -299,8 +299,10 @@ static task_t *task_create(target_t target, const char *name, u32 priority, u32 
     return task;
 }
 
+int sys_execve();
+
 // 调用该函数的地方需要准备足够的空间，因为该函数的局部变量也是在栈上的，避免下面的局部变量在设置中断帧时被覆盖
-void task_to_user_mode(target_t target)
+void task_to_user_mode()
 {
     task_t *task = running_task();
 
@@ -338,14 +340,12 @@ void task_to_user_mode(target_t target)
 
     iframe->error = OS_MAGIC;
 
-    iframe->eip = (u32)target;
-    iframe->eflags = (0 << 12 | 0b10 | 1 << 9); // IOPL = 1 —— 不允许用户态使用 IO指令。 IF = 1 —— 用户态必须打开中断
-                                                // 位 12: IOPL, 位 9: IF，位 1: 固定为 1
+    iframe->eip = 0;    // 这个值会被后续的 sys_execve() 覆盖
+    iframe->eflags = (0 << 12 | 0b10 | 1 << 9);
     iframe->esp = USER_STACK_TOP;
 
-    asm volatile(
-        "movl %0, %%esp\n"
-        "jmp interrupt_exit\n" ::"m"(iframe));
+    int err = sys_execve("/bin/init.out", NULL, NULL);
+    panic("exec /bin/init.out failure");
 }
 
 void interrupt_exit(void);

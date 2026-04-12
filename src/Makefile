@@ -46,11 +46,14 @@ $(BUILD)/%.o: $(SRC)/%.c
 	gcc $(CFLAGS) $(DEBUG) $(INCLUDE) -c $< -o $@
 
 BUILTIN_APPS := \
+	$(BUILD)/builtin/init.out \
+	$(BUILD)/builtin/posh.out \
 	$(BUILD)/builtin/env.out \
 	$(BUILD)/builtin/echo.out \
 	$(BUILD)/builtin/cat.out \
 	$(BUILD)/builtin/ls.out \
 	$(BUILD)/builtin/dup.out \
+	$(BUILD)/builtin/err.out \
 
 $(BUILD)/lib/libc.o: $(BUILD)/lib/crt.o \
 	$(BUILD)/lib/crt1.o \
