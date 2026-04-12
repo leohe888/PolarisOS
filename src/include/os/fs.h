@@ -38,6 +38,9 @@ Minix 1 文件系统将存储设备划分为 6 个连续部分：
 #define SEPARATOR2 '\\'                                      // 目录分隔符 2
 #define IS_SEPARATOR(c) (c == SEPARATOR1 || c == SEPARATOR2) // 字符是否位目录分隔符
 
+#define ACC_MODE(x) ("\004\002\006\377"[(x) & O_ACCMODE])   // "\004\002\006\377" 是一个字符数组，其中的字符是八进制转义序列
+   
+
 enum file_flag
 {
     O_RDONLY = 00,      // 只读方式
@@ -74,15 +77,18 @@ typedef struct inode_desc_t
 // 内存中的 inode
 typedef struct inode_t
 {
-    inode_desc_t *desc;   // inode 描述符
-    struct buffer_t *buf; // inode 描述符对应的缓冲区
-    dev_t dev;            // 设备号
-    idx_t nr;             // inode 号
-    u32 count;            // 引用计数
-    time_t atime;         // 访问时间
-    time_t ctime;         // 修改时间
-    list_node_t node;     // 链表结点
-    dev_t mount;          // 安装设备
+    inode_desc_t *desc;         // inode 描述符
+    struct buffer_t *buf;       // inode 描述符对应的缓冲区
+    dev_t dev;                  // 设备号
+    idx_t nr;                   // inode 号
+    u32 count;                  // 引用计数
+    time_t atime;               // 访问时间
+    time_t ctime;               // 修改时间
+    list_node_t node;           // 链表结点
+    dev_t mount;                // 安装设备
+    struct task_t *rxwaiter;    // 读等待进程
+    struct task_t *txwaiter;    // 写等待进程
+    bool pipe;                  // 管道标志
 } inode_t;
 
 // 磁盘上的超级快
@@ -174,5 +180,11 @@ int devmkfs(dev_t dev, u32 icount);
 
 // 检查权限
 bool permission(inode_t *inode, u16 mask);
+
+inode_t *get_pipe_inode(); // 获取管道 inode
+// 管道读
+int pipe_read(inode_t *inode, char *buf, int count);
+// 管道写
+int pipe_write(inode_t *inode, char *buf, int count);
 
 #endif

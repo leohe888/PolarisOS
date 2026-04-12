@@ -50,6 +50,7 @@ BUILTIN_APPS := \
 	$(BUILD)/builtin/echo.out \
 	$(BUILD)/builtin/cat.out \
 	$(BUILD)/builtin/ls.out \
+	$(BUILD)/builtin/dup.out \
 
 $(BUILD)/lib/libc.o: $(BUILD)/lib/crt.o \
 	$(BUILD)/lib/crt1.o \
@@ -111,6 +112,7 @@ $(BUILD)/kernel.bin: \
 	$(BUILD)/fs/file.o \
 	$(BUILD)/fs/stat.o \
 	$(BUILD)/fs/dev.o \
+	$(BUILD)/fs/pipe.o \
 	$(BUILD)/lib/bitmap.o \
 	$(BUILD)/lib/list.o \
 	$(BUILD)/lib/fifo.o \

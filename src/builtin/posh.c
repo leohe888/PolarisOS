@@ -69,11 +69,35 @@ void builtin_logo()
 
 void builtin_test(int argc, char *argv[])
 {
-    printf("posh test starting...\n");
-    // while (true)
-    // {
-    //     test();
-    // }
+    printf("osh test starting...\n");
+
+    int status = 0;
+    fd_t pipefd[2];
+
+    int result = pipe(pipefd);
+
+    pid_t pid = fork();
+    if (pid)
+    {
+        char buf[128];
+        printf("--%d-- geting message\n", getpid());
+        int len = read(pipefd[0], buf, 24);
+        printf("--%d-- get message: %s count %d\n", getpid(), buf, len);
+
+        pid_t child = waitpid(pid, &status);
+        close(pipefd[1]);
+        close(pipefd[0]);
+    }
+    else
+    {
+        char *message = "pipe written message!!!";
+        printf("--%d-- put message: %s\n", getpid(), message);
+        write(pipefd[1], message, 24);
+
+        close(pipefd[1]);
+        close(pipefd[0]);
+        exit(0);
+    }
 }
 
 void builtin_pwd()
@@ -165,21 +189,202 @@ void builtin_mkfs(int argc, char *argv[])
     mkfs(argv[1], 0);
 }
 
-void builtin_exec(char *filename, int argc, char *argv[])
+static int dupfile(int argc, char **argv, fd_t dupfd[3])
 {
-    int status;
-    pid_t pid = fork();
-    if (pid)
+    for (size_t i = 0; i < 3; i++)
     {
-        // printf("fork after parent %d, %d, %d\n", pid, getpid(), getppid());
-        pid_t child = waitpid(pid, &status);
-        // printf("wait pid %d status %d %d\n", child, status, time());
-        return;
+        dupfd[i] = EOF;
     }
 
-    // execve 函数不会返回，除非出错
+    int outappend = 0;
+    int errappend = 0;
+
+    char *infile = NULL;
+    char *outfile = NULL;
+    char *errfile = NULL;
+
+    for (size_t i = 0; i < argc; i++)   // 遍历所有的命令行参数
+    {
+        if (!strcmp(argv[i], "<") && (i + 1) < argc)
+        {
+            infile = argv[i + 1];   // 检测到 < 时，将下一个参数赋值给 infile
+            argv[i] = NULL;         // 将当前的 < 参数置为 NULL
+            i++;                    // 跳过下一个参数，因为它已经被处理了
+            continue;
+        }
+        if (!strcmp(argv[i], ">") && (i + 1) < argc)
+        {
+            outfile = argv[i + 1];  // 检测到 > 时，将下一个参数赋值给 outfile
+            argv[i] = NULL;         // 将当前的 > 参数置为 NULL
+            i++;                    // 跳过下一个参数，因为它已经被处理了
+            continue;
+        }
+        if (!strcmp(argv[i], ">>") && (i + 1) < argc)
+        {
+            outfile = argv[i + 1];  // 检测到 >> 时，将下一个参数赋值给 outfile
+            argv[i] = NULL;         // 将当前的 >> 参数置为 NULL
+            outappend = O_APPEND;   // 设置追加模式
+            i++;                    // 跳过下一个参数，因为它已经被处理了
+            continue;
+        }
+        if (!strcmp(argv[i], "2>") && (i + 1) < argc)
+        {
+            errfile = argv[i + 1];  // 检测到 2> 时，将下一个参数赋值给 errfile
+            argv[i] = NULL;         // 将当前的 2> 参数置为 NULL
+            i++;                    // 跳过下一个参数，因为它已经被处理了
+            continue;
+        }
+        if (!strcmp(argv[i], "2>>") && (i + 1) < argc)
+        {
+            errfile = argv[i + 1];  // 检测到 2>> 时，将下一个参数赋值给 errfile
+            argv[i] = NULL;         // 将当前的 2>> 参数置为 NULL
+            errappend = O_APPEND;   // 设置追加模式
+            i++;
+            continue;
+        }
+    }
+
+    if (infile != NULL)
+    {
+        fd_t fd = open(infile, O_RDONLY | outappend | O_CREAT, 0755);
+        if (fd == EOF)
+        {
+            printf("open file %s failure\n", infile);
+            goto rollback;
+        }
+        dupfd[0] = fd;
+    }
+    if (outfile != NULL)
+    {
+        fd_t fd = open(outfile, O_WRONLY | outappend | O_CREAT, 0755);
+        if (fd == EOF)
+        {
+            printf("open file %s failure\n", outfile);
+            goto rollback;
+        }
+        dupfd[1] = fd;
+    }
+    if (errfile != NULL)
+    {
+        fd_t fd = open(errfile, O_WRONLY | errappend | O_CREAT, 0755);
+        if (fd == EOF)
+        {
+            printf("open file %s failure\n", errfile);
+            goto rollback;
+        }
+        dupfd[2] = fd;
+    }
+    return 0;
+
+rollback:
+    for (size_t i = 0; i < 3; i++)
+    {
+        if (dupfd[i] != EOF)
+        {
+            close(dupfd[i]);
+        }
+    }
+    return EOF;
+}
+
+pid_t builtin_command(char *filename, char *argv[], fd_t infd, fd_t outfd, fd_t errfd)
+{
+    int status;
+
+    pid_t pid = fork();
+    if (pid)    // 父进程
+    {
+        if (infd != EOF)
+        {
+            close(infd);
+        }
+        if (outfd != EOF)
+        {
+            close(outfd);
+        }
+        if (errfd != EOF)
+        {
+            close(errfd);
+        }
+        return pid; 
+    }
+    if (infd != EOF)
+    {
+        fd_t fd = dup2(infd, STDIN_FILENO);
+        close(infd);
+    }
+    if (outfd != EOF)
+    {
+        fd_t fd = dup2(outfd, STDOUT_FILENO);
+        close(outfd);
+    }
+    if (errfd != EOF)
+    {
+        fd_t fd = dup2(errfd, STDERR_FILENO);
+        close(errfd);
+    }
+
     int i = execve(filename, argv, envp);
     exit(i);
+}
+
+void builtin_exec(int argc, char *argv[])
+{
+    bool p = true;
+    int status;
+
+    char **bargv = NULL;
+    char *name = buf;
+
+    fd_t dupfd[3];
+    if (dupfile(argc, argv, dupfd) == EOF)
+        return;
+
+    fd_t infd = dupfd[0];
+    fd_t pipefd[2];
+    int count = 0;
+
+    for (int i = 0; i < argc; i++)
+    {
+        // 跳过空参数
+        if (!argv[i])
+        {
+            continue;
+        }
+        if (!p && !strcmp(argv[i], "|"))   // 如果遇到管道符号 |，则创建管道，并将前一个命令的输出通过管道传递给下一个命令。
+        {
+            argv[i] = NULL;
+            int ret = pipe(pipefd);
+            builtin_command(name, bargv, infd, pipefd[1], EOF);
+            count++;
+            infd = pipefd[0];
+            int len = strlen(name) + 1;
+            name += len;
+            p = true;
+            continue;
+        }
+        if (!p)
+        {
+            continue;
+        }
+
+        stat_t statbuf;
+        sprintf(name, "/bin/%s.out", argv[i]);
+        if (stat(name, &statbuf) == EOF)
+        {
+            printf("posh: command not found: %s\n", argv[i]);
+            return;
+        }
+        bargv = &argv[i + 1];
+        p = false;
+    }
+
+    int pid = builtin_command(name, bargv, infd, dupfd[1], dupfd[2]);
+    for (size_t i = 0; i <= count; i++)
+    {
+        pid_t child = waitpid(-1, &status);
+        // printf("child %d exit\n", child);
+    }
 }
 
 static void execute(int argc, char *argv[])
@@ -242,15 +447,7 @@ static void execute(int argc, char *argv[])
     {
         return builtin_mkfs(argc, argv);
     }
-
-    stat_t statbuf;
-    sprintf(buf, "/bin/%s.out", argv[0]);
-    if (stat(buf, &statbuf) == EOF)
-    {
-        printf("posh: command not found: %s\n", argv[0]);
-        return;
-    }
-    return builtin_exec(buf, argc - 1, &argv[1]);
+    return builtin_exec(argc, argv);
 }
 
 void readline(char *buf, u32 count)
@@ -295,15 +492,16 @@ void readline(char *buf, u32 count)
     buf[idx] = '\0';
 }
 
-static int cmd_parse(char *cmd, char *argv[], char token)
+static int cmd_parse(char *cmd, char *argv[])
 {
     assert(cmd != NULL);
 
     char *next = cmd;
     int argc = 0;
+    int quot = false;
     while (*next && argc < MAX_ARG_NR)
     {
-        while (*next == token)
+        while (*next == ' ' || (quot && *next != '"'))
         {
             next++;
         }
@@ -311,17 +509,37 @@ static int cmd_parse(char *cmd, char *argv[], char token)
         {
             break;
         }
+
+        if (*next == '"')
+        {
+            quot = !quot;
+
+            if (quot)
+            {
+                next++;
+                argv[argc++] = next;
+            }
+            else
+            {
+                *next = 0;
+                next++;
+            }
+            continue;
+        }
+
         argv[argc++] = next;
-        while (*next && *next != token)
+        while (*next && *next != ' ')
         {
             next++;
         }
+
         if (*next)
         {
             *next = 0;
             next++;
         }
     }
+
     argv[argc] = NULL;
     return argc;
 }
@@ -343,7 +561,7 @@ int posh_main()
         {
             continue;
         }
-        int argc = cmd_parse(cmd, args, ' ');
+        int argc = cmd_parse(cmd, args);
         if (argc < 0 || argc >= MAX_ARG_NR)
         {
             continue;
